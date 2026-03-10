@@ -1,6 +1,11 @@
 package main
 
 import (
+	"demonos/drivers/kbd"
+	"demonos/drivers/pci"
+	"demonos/drivers/pic"
+	"demonos/drivers/pit"
+	"demonos/drivers/serial"
 	"demonos/drivers/vga"
 	"demonos/kernel/elf"
 	"demonos/kernel/mm"
@@ -25,6 +30,9 @@ var initBin []byte
 //go:nosplit
 //go:noinline
 func kmain(mbInfo uint32) {
+	serial.Init()
+	serial.WriteString("DemonOS kmain\n")
+
 	con := vga.DefaultConsole
 	con.Clear()
 
@@ -35,14 +43,36 @@ func kmain(mbInfo uint32) {
 	con.WriteString("  mb2 @ ")
 	con.WriteHex(uint64(mbInfo))
 	con.WriteString("\n")
+	serial.WriteString("  mb2 @ ")
+	serial.WriteHex(uint64(mbInfo))
+	serial.WriteString("\n")
 
 	mm.Init(mbInfo)
 	con.WriteString("  mm OK  free=")
 	con.WriteHex(mm.TotalFreeBytes())
 	con.WriteString("\n")
+	serial.WriteString("  mm OK\n")
 
 	trap.Init()
 	con.WriteString("  trap OK\n")
+	serial.WriteString("  trap OK\n")
+
+	pic.Init()
+	pic.EnableIRQ(0)
+	pic.EnableIRQ(1)
+	pit.Init()
+	con.WriteString("  pic/pit OK\n")
+	serial.WriteString("  pic/pit OK\n")
+
+	pci.Scan()
+	con.WriteString("  pci OK  devs=")
+	con.WriteHex(uint64(pci.Count))
+	con.WriteString("\n")
+	serial.WriteString("  pci OK  devs=")
+	serial.WriteHex(uint64(pci.Count))
+	serial.WriteString("\n")
+
+	_ = kbd.Pending
 
 	if len(initBin) > 0 {
 		result, err := elf.Load(initBin)
@@ -50,6 +80,7 @@ func kmain(mbInfo uint32) {
 			con.FG = vga.LightRed
 			con.WriteString("  elf load failed\n")
 			con.FG = vga.White
+			serial.WriteString("  elf load failed\n")
 			halt()
 		}
 		con.WriteString("  elf loaded entry=")
@@ -62,6 +93,7 @@ func kmain(mbInfo uint32) {
 		con.FG = vga.LightGreen
 		con.WriteString("  launching init\n")
 		con.FG = vga.White
+		serial.WriteString("  launching init\n")
 
 		t.Run()
 	}
@@ -69,6 +101,7 @@ func kmain(mbInfo uint32) {
 	con.FG = vga.LightGreen
 	con.WriteString("DemonOS ready\n")
 	con.FG = vga.White
+	serial.WriteString("DemonOS ready\n")
 
 	halt()
 }

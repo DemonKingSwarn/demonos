@@ -42,6 +42,9 @@ stack_bottom:
     resb 65536
 stack_top:
 
+align 64
+g0_fake:      resb 64
+
 section .rodata
 align 8
 gdt64:
@@ -131,7 +134,20 @@ long_mode_entry:
 
     mov   rsp, stack_top
 
+    mov   rax, cr4
+    or    rax, (1 << 9) | (1 << 10)
+    mov   cr4, rax
+
     mov   word [0xB8000], 0x0A4B
+
+    lea   rax, [rel g0_fake]
+    mov   [rax], rax
+    lea   rbx, [rax + 8]
+    mov   eax, ebx
+    shr   rbx, 32
+    mov   edx, ebx
+    mov   ecx, 0xC0000100
+    wrmsr
 
     call  serial_init
 

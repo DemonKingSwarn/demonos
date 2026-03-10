@@ -1,7 +1,10 @@
 package trap
 
 import (
-	_ "unsafe"
+	"demonos/drivers/kbd"
+	"demonos/drivers/pic"
+	"demonos/drivers/pit"
+	"demonos/drivers/serial"
 )
 
 type Frame struct {
@@ -68,6 +71,19 @@ var exceptionNames = [32]string{
 func trapHandler(f *Frame) {
 	if f.Vector < 32 {
 		panicTrap(f)
+		return
+	}
+	switch f.Vector {
+	case pic.IRQVector(0):
+		pit.Tick()
+		pic.EOI(0)
+	case pic.IRQVector(1):
+		kbd.Handle()
+		pic.EOI(1)
+	default:
+		if f.Vector >= 0x20 && f.Vector < 0x30 {
+			pic.EOI(uint8(f.Vector - 0x20))
+		}
 	}
 }
 
@@ -78,11 +94,21 @@ func Handle(f *Frame) {
 
 //go:nosplit
 func panicTrap(f *Frame) {
-	name := "unknown"
+	serial.WriteString("\r\nKERNEL PANIC: ")
 	if f.Vector < 32 {
-		name = exceptionNames[f.Vector]
+		serial.WriteString(exceptionNames[f.Vector])
+	} else {
+		serial.WriteString("unknown")
 	}
-	_ = name
+	serial.WriteString(" (vec=")
+	serial.WriteHex(f.Vector)
+	serial.WriteString(" rip=")
+	serial.WriteHex(f.RIP)
+	serial.WriteString(" rsp=")
+	serial.WriteHex(f.RSP)
+	serial.WriteString(" err=")
+	serial.WriteHex(f.ErrCode)
+	serial.WriteString(")\r\n")
 	for {
 	}
 }
