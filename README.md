@@ -7,26 +7,9 @@ A kernel written in Go and x86-64 assembly, with Linux syscall ABI compatibility
 - `go` 1.21+
 - `nasm` 2.15+
 - `ld` (binutils)
-- `grub-mkrescue` + `xorriso` (for ISO)
+- `limine` + `xorriso` (for ISO)
 - `qemu-system-x86_64` (for running)
 - `just`
-
-## Layout
-
-```
-boot/           multiboot2 header + 32-to-64-bit boot stub
-arch/x86_64/    GDT, IDT, CPU helpers, syscall entry, user-mode jump (NASM)
-drivers/vga/    memory-mapped VGA text console
-kernel/
-  kernel.go     kmain entry point
-  mm/           physical page allocator (bitmap)
-  trap/         GDT/IDT init, syscall MSR setup, exception handler
-  syscall/      Linux-ABI syscall dispatch (write, exit, exit_group)
-  elf/          static ELF64 loader
-  proc/         task struct + ring-3 launch via sysretq
-kernel.ld       linker script (loads at 1 MiB)
-justfile        build recipes
-```
 
 ## Build
 
